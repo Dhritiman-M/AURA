@@ -14,5 +14,10 @@ data class AgentState(
         List<String> = emptyList(),
 
     val stepCount:
-        Int = 0
+        Int = 0,
+
+    val goalState:
+        GoalState =
+            GoalState(goal)
+
 )

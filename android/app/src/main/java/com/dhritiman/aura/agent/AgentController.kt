@@ -6,48 +6,41 @@ import com.dhritiman.aura.accessibility.UIAction
 
 class AgentController {
 
-
     companion object {
 
         private const val TAG =
             "AURA_AGENT"
     }
 
-
     private val executor =
         AgentExecutor()
-
-
+    
+    private val history =
+    ActionHistory()
 
     fun start(
         goal: String
     ) {
-
 
         var state =
             AgentState(
                 goal = goal
             )
 
-
         Log.d(
             TAG,
             "Starting goal: $goal"
         )
 
-
         while(
             state.stepCount < 10
         ) {
-
 
             val screen =
                 com.dhritiman.aura.accessibility
                     .AuraAccessibilityService
                     .instance
                     ?.observeCurrentScreen()
-
-
 
             state =
                 state.copy(
@@ -58,27 +51,19 @@ class AgentController {
                         state.stepCount + 1
                 )
 
-
-
             Log.d(
                 TAG,
                 "Observation step ${state.stepCount}"
             )
-
-
 
             val decision =
                 decide(
                     state
                 )
 
-
-
             when(decision) {
 
-
                 is ActionDecision.Perform -> {
-
 
                     Log.d(
                         TAG,
@@ -86,13 +71,26 @@ class AgentController {
                                 decision.action
                     )
 
-
                     val success =
                         executor.execute(
                             decision
                         )
+                    
+                    history.add(
 
+                        actionName =
+                            decision.action.toString(),
 
+                        success =
+                            success
+                    )
+
+                    Log.d(
+                        TAG,
+                        "Action history size: " +
+                                history.getHistory().size
+                    )
+                    
                     if(success) {
 
                         Log.d(
@@ -114,10 +112,7 @@ class AgentController {
 
                 }
 
-
-
                 is ActionDecision.Completed -> {
-
 
                     Log.d(
                         TAG,
@@ -127,10 +122,7 @@ class AgentController {
                     break
                 }
 
-
-
                 is ActionDecision.Failed -> {
-
 
                     Log.e(
                         TAG,
@@ -140,8 +132,6 @@ class AgentController {
                     break
                 }
             }
-
-
 
             /*
              * Allow UI to update
@@ -153,13 +143,9 @@ class AgentController {
         }
     }
 
-
-
-
     private fun decide(
         state: AgentState
     ): ActionDecision {
-
 
         val screen =
             state.currentScreen
@@ -167,12 +153,8 @@ class AgentController {
                     "No screen available"
                 )
 
-
-
         val goal =
             state.goal.lowercase()
-
-
 
         if(
             goal.contains(
@@ -180,23 +162,18 @@ class AgentController {
             )
         ) {
 
-
             val searchExists =
                 screen.elements.any { element ->
-
 
                     val text =
                         element.text
                             ?.lowercase()
                             ?: ""
 
-
                     val description =
                         element.contentDescription
                             ?.lowercase()
                             ?: ""
-
-
 
                     text.contains(
                         "search"
@@ -207,10 +184,7 @@ class AgentController {
                     )
                 }
 
-
-
             if(searchExists) {
-
 
                 return ActionDecision.Perform(
 
@@ -219,14 +193,11 @@ class AgentController {
                             "Search"
                         ),
 
-
                     reason =
                         "Search button detected"
                 )
             }
         }
-
-
 
         return ActionDecision.Failed(
             "No action available"
