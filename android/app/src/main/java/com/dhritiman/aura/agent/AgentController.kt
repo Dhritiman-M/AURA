@@ -1,16 +1,23 @@
 package com.dhritiman.aura.agent
 
 import android.util.Log
-import com.dhritiman.aura.accessibility.AuraAccessibilityService
 import com.dhritiman.aura.accessibility.UIAction
 
+
 class AgentController {
+
 
     companion object {
 
         private const val TAG =
             "AURA_AGENT"
     }
+
+
+    private val executor =
+        AgentExecutor()
+
+
 
     fun start(
         goal: String
@@ -22,19 +29,25 @@ class AgentController {
                 goal = goal
             )
 
+
         Log.d(
             TAG,
             "Starting goal: $goal"
         )
 
+
         while(
-            state.stepCount < 20
+            state.stepCount < 10
         ) {
 
+
             val screen =
-                AuraAccessibilityService
+                com.dhritiman.aura.accessibility
+                    .AuraAccessibilityService
                     .instance
                     ?.observeCurrentScreen()
+
+
 
             state =
                 state.copy(
@@ -45,53 +58,108 @@ class AgentController {
                         state.stepCount + 1
                 )
 
+
+
             Log.d(
                 TAG,
                 "Observation step ${state.stepCount}"
             )
 
+
+
             val decision =
-                decide(state)
+                decide(
+                    state
+                )
+
+
 
             when(decision) {
 
+
                 is ActionDecision.Perform -> {
+
 
                     Log.d(
                         TAG,
                         "Executing: " +
-                        decision.action
+                                decision.action
                     )
 
-                    // execution will be connected
-                    // in next step
+
+                    val success =
+                        executor.execute(
+                            decision
+                        )
+
+
+                    if(success) {
+
+                        Log.d(
+                            TAG,
+                            "Action executed"
+                        )
+
+                    }
+                    else {
+
+                        Log.e(
+                            TAG,
+                            "Action failed"
+                        )
+
+                        break
+                    }
+
+
                 }
+
+
 
                 is ActionDecision.Completed -> {
 
+
                     Log.d(
                         TAG,
-                        "Goal completed"
+                        decision.message
                     )
 
                     break
                 }
 
+
+
                 is ActionDecision.Failed -> {
+
 
                     Log.e(
                         TAG,
                         decision.reason
                     )
+
                     break
                 }
             }
+
+
+
+            /*
+             * Allow UI to update
+             */
+
+            Thread.sleep(
+                800
+            )
         }
     }
+
+
+
 
     private fun decide(
         state: AgentState
     ): ActionDecision {
+
 
         val screen =
             state.currentScreen
@@ -100,18 +168,16 @@ class AgentController {
                 )
 
 
+
         val goal =
             state.goal.lowercase()
 
 
-        /*
-        * Temporary rule:
-        *
-        * If the goal requires searching,
-        * find a search element.
-        */
-        if (
-            goal.contains("search")
+
+        if(
+            goal.contains(
+                "search"
+            )
         ) {
 
 
@@ -131,6 +197,7 @@ class AgentController {
                             ?: ""
 
 
+
                     text.contains(
                         "search"
                     )
@@ -142,7 +209,7 @@ class AgentController {
 
 
 
-            if (searchExists) {
+            if(searchExists) {
 
 
                 return ActionDecision.Perform(
@@ -152,8 +219,9 @@ class AgentController {
                             "Search"
                         ),
 
+
                     reason =
-                        "Search element found on screen"
+                        "Search button detected"
                 )
             }
         }
@@ -161,7 +229,7 @@ class AgentController {
 
 
         return ActionDecision.Failed(
-            "No suitable action found"
+            "No action available"
         )
     }
 }

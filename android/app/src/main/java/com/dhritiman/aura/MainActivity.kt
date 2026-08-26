@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import com.dhritiman.aura.agent.TaskPlanner
 import com.dhritiman.aura.agent.TestPlanFactory
 import com.dhritiman.aura.agent.TaskPlanExecutor
+import com.dhritiman.aura.agent.AgentController
 
 class MainActivity : ComponentActivity() {
 
@@ -139,6 +140,40 @@ class MainActivity : ComponentActivity() {
                         HomeScreen(
 
                             onCommand = { command ->
+                                if(
+                                    command.startsWith(
+                                        "agent",
+                                        ignoreCase = true
+                                    )
+                                ){
+
+                                    AgentController()
+                                        .start(
+                                            command
+                                                .removePrefix("agent")
+                                                .trim()
+                                        )
+
+                                }
+                                else {
+
+                                    val plan =
+                                        taskPlanner.createPlan(
+                                            command
+                                        )
+
+
+                                    val planExecutor =
+                                        TaskPlanExecutor(
+                                            taskExecutor
+                                        )
+
+
+                                    planExecutor.execute(
+                                        plan,
+                                        selectedApps
+                                    )
+                                }
 
                                 val plan =
                                     taskPlanner.createPlan(
