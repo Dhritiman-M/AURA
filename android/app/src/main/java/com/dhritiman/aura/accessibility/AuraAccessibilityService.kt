@@ -33,6 +33,7 @@ class AuraAccessibilityService :
     private lateinit var actionExecutor:
             UIActionExecutor
 
+    private val screenObserver =ScreenObserver()
     // --------------------------------------------------
     // SERVICE LIFECYCLE
     // --------------------------------------------------
@@ -84,6 +85,27 @@ class AuraAccessibilityService :
 
             accessibilityController
                 .dumpCurrentScreen()
+        }
+        val state =
+        observeCurrentScreen()
+
+        Log.d(
+            "AURA_OBSERVER",
+            "Screen package: " +
+                    state?.packageName
+        )
+
+        state?.elements?.forEach { element ->
+
+            Log.d(
+                "AURA_OBSERVER",
+                "Element: " +
+                        "text=${element.text}, " +
+                        "description=${element.contentDescription}, " +
+                        "clickable=${element.clickable}, " +
+                        "editable=${element.editable}, " +
+                        "scrollable=${element.scrollable}"
+            )
         }
     }
 
@@ -266,5 +288,12 @@ class AuraAccessibilityService :
         return executeAction(
             UIAction.ScrollBackward
         )
+    }
+
+    fun observeCurrentScreen(): ScreenState? {
+
+    return screenObserver.observe(
+        rootInActiveWindow
+    )
     }
 }
