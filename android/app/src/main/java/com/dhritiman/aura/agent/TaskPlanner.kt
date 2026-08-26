@@ -4,417 +4,248 @@ import com.dhritiman.aura.accessibility.UIAction
 
 class TaskPlanner {
 
-    fun createPlan(
-        command: String
-    ): TaskPlan {
+    fun createPlan(command: String): TaskPlan {
 
-        val originalCommand =
-            command.trim()
+        val normalized =
+            command
+                .trim()
+                .lowercase()
 
-        val normalizedCommand =
-            originalCommand.lowercase()
-
-        if (normalizedCommand.isBlank()) {
-
-            return TaskPlan(
-                steps = emptyList()
-            )
-        }
+        val steps =
+            mutableListOf<PlanStep>()
 
         /*
-         * =====================================
-         * OPEN APP + PRESS BACK
-         * =====================================
+         * Example:
+         *
+         * "open whatsapp"
+         *
+         * becomes:
+         *
+         * OpenApp("whatsapp")
          */
-        if (
-            normalizedCommand.contains(
-                " and press back"
-            )
-        ) {
+        if (normalized.startsWith("open ")) {
 
-            val appName =
-                originalCommand
-                    .substringBefore(
-                        " and ",
-                        ""
-                    )
-                    .trim()
-                    .removePrefixIgnoreCase(
-                        "open "
-                    )
-                    .removePrefixIgnoreCase(
-                        "launch "
-                    )
-                    .removePrefixIgnoreCase(
-                        "start "
-                    )
+            val remaining =
+                normalized
+                    .removePrefix("open ")
                     .trim()
 
-            if (appName.isNotBlank()) {
+            /*
+             * Check whether the command
+             * contains multiple instructions.
+             */
+            val andIndex =
+                remaining.indexOf(" and ")
 
-                return TaskPlan(
-                    steps = listOf(
+            if (andIndex == -1) {
 
-                        PlanStep.OpenApp(
-                            appName = appName
-                        ),
+                steps.add(
+                    PlanStep.OpenApp(
+                        remaining
+                    )
+                )
 
-                        PlanStep.UI(
-                            action =
-                                UIAction.PressBack
+            } else {
+
+                val appName =
+                    remaining
+                        .substring(
+                            0,
+                            andIndex
                         )
+                        .trim()
+
+                steps.add(
+                    PlanStep.OpenApp(
+                        appName
                     )
+                )
+
+                val nextCommand =
+                    remaining
+                        .substring(
+                            andIndex + 5
+                        )
+                        .trim()
+
+                parseUICommand(
+                    nextCommand,
+                    steps
                 )
             }
         }
 
-        /*
-         * =====================================
-         * PRESS BACK
-         * =====================================
-         */
-        if (
-            normalizedCommand == "back" ||
-            normalizedCommand == "go back" ||
-            normalizedCommand == "press back"
-        ) {
+        return TaskPlan(
+            steps = steps
+        )
+    }
 
-            return TaskPlan(
-                steps = listOf(
-
-                    PlanStep.UI(
-                        action =
-                            UIAction.PressBack
-                    )
-                )
-            )
-        }
+    private fun parseUICommand(
+        command: String,
+        steps: MutableList<PlanStep>
+    ) {
 
         /*
-         * =====================================
-         * SCROLL DOWN
-         * =====================================
-         */
-        if (
-            normalizedCommand == "scroll" ||
-            normalizedCommand == "scroll down" ||
-            normalizedCommand == "scroll forward"
-        ) {
-
-            return TaskPlan(
-                steps = listOf(
-
-                    PlanStep.UI(
-                        action =
-                            UIAction.ScrollForward
-                    )
-                )
-            )
-        }
-
-        /*
-         * =====================================
-         * SCROLL UP
-         * =====================================
-         */
-        if (
-            normalizedCommand == "scroll up" ||
-            normalizedCommand == "scroll backward"
-        ) {
-
-            return TaskPlan(
-                steps = listOf(
-
-                    PlanStep.UI(
-                        action =
-                            UIAction.ScrollBackward
-                    )
-                )
-            )
-        }
-
-        /*
-         * =====================================
-         * CLICK TEXT
-         * =====================================
+         * Search for something.
          *
          * Example:
          *
-         * click Search
+         * "search for john"
          */
         if (
-            normalizedCommand.startsWith(
+            command.startsWith(
+                "search for "
+            )
+        ) {
+
+            val searchText =
+                command
+                    .removePrefix(
+                        "search for "
+                    )
+                    .trim()
+
+            steps.add(
+                PlanStep.UI(
+                    UIAction.WaitForText(
+                        "Search"
+                    )
+                )
+            )
+
+            steps.add(
+                PlanStep.UI(
+                    UIAction.ClickText(
+                        "Search"
+                    )
+                )
+            )
+
+            steps.add(
+                PlanStep.UI(
+                    UIAction.TypeText(
+                        searchText
+                    )
+                )
+            )
+            return
+        }
+
+        /*
+         * Click something.
+         *
+         * Example:
+         *
+         * "click settings"
+         */
+        if (
+            command.startsWith(
                 "click "
             )
         ) {
 
-            val target =
-                originalCommand
-                    .substringAfter(
-                        " ",
-                        ""
+            val text =
+                command
+                    .removePrefix(
+                        "click "
                     )
                     .trim()
 
-            if (target.isNotBlank()) {
-
-                return TaskPlan(
-                    steps = listOf(
-
-                        PlanStep.UI(
-                            action =
-                                UIAction.ClickText(
-                                    target
-                                )
-                        )
+            steps.add(
+                PlanStep.UI(
+                    UIAction.WaitForText(
+                        text
                     )
                 )
-            }
+            )
+
+            steps.add(
+                PlanStep.UI(
+                    UIAction.ClickText(
+                        text
+                    )
+                )
+            )
+
+            return
         }
 
         /*
-         * =====================================
-         * TYPE TEXT
-         * =====================================
+         * Type something.
          *
          * Example:
          *
-         * type hello world
+         * "type hello"
          */
         if (
-            normalizedCommand.startsWith(
+            command.startsWith(
                 "type "
             )
         ) {
 
             val text =
-                originalCommand
-                    .substringAfter(
-                        " ",
-                        ""
+                command
+                    .removePrefix(
+                        "type "
                     )
                     .trim()
 
-            if (text.isNotBlank()) {
-
-                return TaskPlan(
-                    steps = listOf(
-
-                        PlanStep.UI(
-                            action =
-                                UIAction.TypeText(
-                                    text
-                                )
-                        )
+            steps.add(
+                PlanStep.UI(
+                    UIAction.TypeText(
+                        text
                     )
                 )
-            }
+            )
+
+            return
         }
 
         /*
-         * =====================================
-         * CLICK DESCRIPTION
-         * =====================================
-         *
-         * Example:
-         *
-         * click description menu
+         * Scroll down.
          */
         if (
-            normalizedCommand.startsWith(
-                "click description "
-            )
+            command == "scroll down"
         ) {
 
-            val description =
-                originalCommand
-                    .substringAfter(
-                        "click description ",
-                        ""
-                    )
-                    .trim()
-
-            if (
-                description.isNotBlank()
-            ) {
-
-                return TaskPlan(
-                    steps = listOf(
-
-                        PlanStep.UI(
-                            action =
-                                UIAction.ClickDescription(
-                                    description
-                                )
-                        )
-                    )
+            steps.add(
+                PlanStep.UI(
+                    UIAction.ScrollDown
                 )
-            }
+            )
+
+            return
         }
 
         /*
-         * =====================================
-         * FIND TEXT
-         * =====================================
-         *
-         * Example:
-         *
-         * find Search
+         * Scroll forward.
          */
         if (
-            normalizedCommand.startsWith(
-                "find "
-            )
+            command == "scroll forward"
         ) {
 
-            val text =
-                originalCommand
-                    .substringAfter(
-                        " ",
-                        ""
-                    )
-                    .trim()
-
-            if (text.isNotBlank()) {
-
-                return TaskPlan(
-                    steps = listOf(
-
-                        PlanStep.UI(
-                            action =
-                                UIAction.FindText(
-                                    text
-                                )
-                        )
-                    )
+            steps.add(
+                PlanStep.UI(
+                    UIAction.ScrollForward
                 )
-            }
+            )
+
+            return
         }
 
         /*
-         * =====================================
-         * OPEN APP
-         * =====================================
+         * Go back.
          */
         if (
-            normalizedCommand.startsWith(
-                "open "
-            )
+            command == "go back" ||
+            command == "back"
         ) {
 
-            val appName =
-                originalCommand
-                    .substringAfter(
-                        " ",
-                        ""
-                    )
-                    .trim()
-
-            if (appName.isNotBlank()) {
-
-                return TaskPlan(
-                    steps = listOf(
-
-                        PlanStep.OpenApp(
-                            appName = appName
-                        )
-                    )
+            steps.add(
+                PlanStep.UI(
+                    UIAction.PressBack
                 )
-            }
-        }
-
-        /*
-         * =====================================
-         * LAUNCH APP
-         * =====================================
-         */
-        if (
-            normalizedCommand.startsWith(
-                "launch "
             )
-        ) {
-
-            val appName =
-                originalCommand
-                    .substringAfter(
-                        " ",
-                        ""
-                    )
-                    .trim()
-
-            if (appName.isNotBlank()) {
-
-                return TaskPlan(
-                    steps = listOf(
-
-                        PlanStep.OpenApp(
-                            appName = appName
-                        )
-                    )
-                )
-            }
-        }
-
-        /*
-         * =====================================
-         * START APP
-         * =====================================
-         */
-        if (
-            normalizedCommand.startsWith(
-                "start "
-            )
-        ) {
-
-            val appName =
-                originalCommand
-                    .substringAfter(
-                        " ",
-                        ""
-                    )
-                    .trim()
-
-            if (appName.isNotBlank()) {
-
-                return TaskPlan(
-                    steps = listOf(
-
-                        PlanStep.OpenApp(
-                            appName = appName
-                        )
-                    )
-                )
-            }
-        }
-
-        /*
-         * =====================================
-         * UNKNOWN COMMAND
-         * =====================================
-         */
-        return TaskPlan(
-            steps = emptyList()
-        )
-    }
-
-    private fun String.removePrefixIgnoreCase(
-        prefix: String
-    ): String {
-
-        return if (
-            startsWith(
-                prefix,
-                ignoreCase = true
-            )
-        ) {
-
-            substring(
-                prefix.length
-            )
-
-        } else {
-
-            this
         }
     }
 }

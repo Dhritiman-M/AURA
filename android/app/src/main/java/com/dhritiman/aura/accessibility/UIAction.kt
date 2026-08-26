@@ -18,6 +18,11 @@ sealed class UIAction {
         val text: String
     ) : UIAction()
 
+    data class WaitForText(
+        val text: String,
+        val timeoutMs: Long = 5000L
+    ) : UIAction()
+
     data object PressBack : UIAction()
 
     data object ScrollDown : UIAction()

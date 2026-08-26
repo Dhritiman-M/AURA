@@ -29,6 +29,13 @@ class UIActionExecutor(
 
         return when (action) {
 
+            is UIAction.WaitForText -> {
+                waitForText(
+                    text = action.text,
+                    timeoutMs = action.timeoutMs
+                )
+            }
+
             is UIAction.FindText -> {
 
                 val node =
@@ -181,6 +188,50 @@ class UIActionExecutor(
                 )
             }
         }
+    }
+
+    private fun waitForText(
+            text: String,
+            timeoutMs: Long
+        ): UIActionResult {
+
+            val startTime =
+                System.currentTimeMillis()
+
+            Log.d(
+                TAG,
+                "Waiting for text: $text"
+            )
+
+            while (
+                System.currentTimeMillis() - startTime
+                < timeoutMs
+            ) {
+
+                val node =
+                    controller.findByText(text)
+
+                if (node != null) {
+
+                    node.recycle()
+
+                    Log.d(
+                        TAG,
+                        "Found text: $text"
+                    )
+
+                    return UIActionResult.Success
+                }
+
+                Thread.sleep(200)
+            }
+
+            Log.d(
+                TAG,
+                "Timed out waiting for: $text"
+            )
+
+            return UIActionResult.NotFound
     }
 
     private fun performScroll(

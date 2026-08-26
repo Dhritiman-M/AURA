@@ -27,9 +27,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-import com.dhritiman.aura.agent.TaskPlanExecutor
-import com.dhritiman.aura.agent.TestPlanFactory
 import com.dhritiman.aura.agent.TaskPlanner
+import com.dhritiman.aura.agent.TestPlanFactory
+import com.dhritiman.aura.agent.TaskPlanExecutor
 
 class MainActivity : ComponentActivity() {
 
@@ -140,41 +140,18 @@ class MainActivity : ComponentActivity() {
 
                             onCommand = { command ->
 
-                                Log.d(
-                                    "AURA_PLAN",
-                                    "User command: $command"
-                                )
-
                                 val plan =
                                     taskPlanner.createPlan(
                                         command
                                     )
 
-                                /*
-                                * Empty plan means the planner
-                                * doesn't understand the command yet.
-                                */
-                                if (plan.steps.isEmpty()) {
+                                val planExecutor =
+                                    TaskPlanExecutor(
+                                        taskExecutor
+                                    )
 
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "I don't know how to do that yet.",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
-                                    return@HomeScreen
-                                }
-
-                                Log.d(
-                                    "AURA_PLAN",
-                                    "Generated plan: $plan"
-                                )
-
-                                /*
-                                * Execute the generated plan.
-                                */
                                 val success =
-                                    taskPlanExecutor.execute(
+                                    planExecutor.execute(
                                         plan,
                                         selectedApps
                                     )
@@ -183,8 +160,8 @@ class MainActivity : ComponentActivity() {
 
                                     Toast.makeText(
                                         this@MainActivity,
-                                        "Task failed.",
-                                        Toast.LENGTH_SHORT
+                                        "I couldn't complete that task.",
+                                        Toast.LENGTH_LONG
                                     ).show()
                                 }
                             },
