@@ -1,7 +1,6 @@
 package com.dhritiman.aura.agent
 
 import android.util.Log
-import com.dhritiman.aura.accessibility.UIAction
 import com.dhritiman.aura.accessibility.UIActionResult
 
 class TaskPlanExecutor(
@@ -15,7 +14,19 @@ class TaskPlanExecutor(
 
         private const val MAX_RETRIES =
             3
+
+        private const val UI_SETTLE_DELAY =
+            500L
+
+        private const val VERIFICATION_ATTEMPTS =
+            5
+
+        private const val VERIFICATION_DELAY =
+            300L
     }
+
+    private val actionVerifier =
+        ActionVerifier()
 
     fun execute(
         plan: TaskPlan,
@@ -59,11 +70,6 @@ class TaskPlanExecutor(
                 return false
             }
 
-            /*
-             * Give the Android UI a small amount
-             * of time to settle before inspecting
-             * the next state.
-             */
             waitForUiToSettle()
         }
 
@@ -89,33 +95,49 @@ class TaskPlanExecutor(
                 "Attempt $attempt/$MAX_RETRIES"
             )
 
-            val result =
+            val executed =
                 executeStep(
                     step,
                     selectedApps
                 )
 
-            if (result) {
+            if (!executed) {
 
                 Log.d(
                     TAG,
-                    "Step succeeded on attempt $attempt"
+                    "Action execution failed"
+                )
+
+                waitForUiToSettle()
+
+                continue
+            }
+
+            /*
+             * Give the application time to
+             * update its UI.
+             */
+            waitForUiToSettle()
+
+            val verified =
+                verifyStep(step)
+
+            if (verified) {
+
+                Log.d(
+                    TAG,
+                    "Step verified successfully"
                 )
 
                 return true
             }
 
-            if (
-                attempt < MAX_RETRIES
-            ) {
+            Log.d(
+                TAG,
+                "Step verification failed"
+            )
 
-                Log.d(
-                    TAG,
-                    "Step failed. Retrying..."
-                )
-
-                waitForUiToSettle()
-            }
+            waitForUiToSettle()
         }
 
         return false
@@ -161,8 +183,69 @@ class TaskPlanExecutor(
         }
     }
 
+    private fun verifyStep(
+        step: PlanStep
+    ): Boolean {
+
+        return when (step) {
+
+            is PlanStep.OpenApp -> {
+
+                waitForExpectedState(
+                    expectedPackage =
+                        step.expectedPackage
+                )
+            }
+
+            is PlanStep.UI -> {
+
+                /*
+                 * If this step doesn't yet have
+                 * an expected result, observing
+                 * the screen is enough for now.
+                 */
+                waitForExpectedState(
+                    expectedText =
+                        step.expectedText
+                )
+            }
+        }
+    }
+
+    private fun waitForExpectedState(
+        expectedText: String? = null,
+        expectedPackage: String? = null
+    ): Boolean {
+
+        repeat(
+            VERIFICATION_ATTEMPTS
+        ) {
+
+            if (
+                actionVerifier.verify(
+                    expectedText =
+                        expectedText,
+
+                    expectedPackage =
+                        expectedPackage
+                )
+            ) {
+
+                return true
+            }
+
+            Thread.sleep(
+                VERIFICATION_DELAY
+            )
+        }
+
+        return false
+    }
+
     private fun waitForUiToSettle() {
 
-        Thread.sleep(300)
+        Thread.sleep(
+            UI_SETTLE_DELAY
+        )
     }
 }
