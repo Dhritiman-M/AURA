@@ -1,0 +1,10 @@
+<resources>
+
+    <string name="app_name">AURA</string>
+
+    <string
+        name="accessibility_service_description">
+        Allows AURA to understand and interact with supported app interfaces when you explicitly enable its accessibility service.
+    </string>
+
+</resources>
