@@ -11,12 +11,17 @@ import com.dhritiman.aura.apps.AppManager
 import com.dhritiman.aura.accessibility.AuraAccessibilityService
 import com.dhritiman.aura.accessibility.UIAction
 import com.dhritiman.aura.accessibility.UIActionResult
+import com.dhritiman.aura.apps.SystemAppResolver
 
 class TaskExecutor(
     private val context: Context,
     private val appManager: AppManager
 ) {
 
+    private val systemAppResolver =
+    SystemAppResolver(
+        context
+    )
     companion object {
         private const val TAG = "AURA_TASK"
     }
@@ -70,6 +75,30 @@ class TaskExecutor(
                 /*
                  * Find the application.
                  */
+
+                val systemIntent =
+                    systemAppResolver.resolve(
+                        appName
+                    )
+
+                if(systemIntent != null) {
+
+                    systemIntent.addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+
+                    context.startActivity(
+                        systemIntent
+                    )
+
+                    Log.d(
+                        TAG,
+                        "Opened system app: $appName"
+                    )
+
+                    return true
+                }
+
                 val app =
                     appManager.findApp(appName)
 

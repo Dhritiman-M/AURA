@@ -34,6 +34,10 @@ class AuraAccessibilityService :
             UIActionExecutor
 
     private val screenObserver =ScreenObserver()
+
+    private val agentEventSignal =
+    com.dhritiman.aura.agent.AgentEventSignal()
+
     // --------------------------------------------------
     // SERVICE LIFECYCLE
     // --------------------------------------------------
@@ -64,6 +68,16 @@ class AuraAccessibilityService :
 
         if (event == null) {
             return
+        }
+
+        if (
+            event.eventType ==
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType ==
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        ) {
+
+            agentEventSignal.signal()
         }
 
         Log.d(
@@ -140,6 +154,17 @@ class AuraAccessibilityService :
      * Returns the root node of the currently
      * visible application.
      */
+    fun waitForWindowChange(
+        timeoutMillis: Long = 5000
+    ): Boolean {
+
+        agentEventSignal.reset()
+
+        return agentEventSignal.await(
+            timeoutMillis
+        )
+    }
+
     fun getRootNode():
             AccessibilityNodeInfo? {
 

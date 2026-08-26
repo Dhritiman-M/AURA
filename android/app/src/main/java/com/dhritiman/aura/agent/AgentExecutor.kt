@@ -18,6 +18,33 @@ class AgentExecutor(
             "AURA_AGENT_EXECUTOR"
     }
 
+    private fun waitForUIUpdate() {
+
+        val service =
+            AuraAccessibilityService.instance
+                ?: return
+
+        val changed =
+            service.waitForWindowChange(
+                5000
+            )
+
+        if(changed) {
+
+            Log.d(
+                TAG,
+                "UI change detected"
+            )
+
+        } else {
+
+            Log.d(
+                TAG,
+                "UI change timeout"
+            )
+        }
+    }
+
     fun execute(
         decision: ActionDecision
     ): Boolean {
@@ -32,7 +59,7 @@ class AgentExecutor(
                     "Opening app: ${decision.appName}"
                 )
 
-                taskExecutor.execute(
+                val result=taskExecutor.execute(
 
                     Task(
 
@@ -48,6 +75,10 @@ class AgentExecutor(
 
                     selectedApps
                 )
+                if(result){
+                    waitForUIUpdate()
+                }
+                result
             }
 
             is ActionDecision.PerformUI -> {

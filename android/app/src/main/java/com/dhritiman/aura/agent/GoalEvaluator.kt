@@ -35,27 +35,49 @@ class GoalEvaluator {
          */
 
         if(
-            normalizedGoal.contains(
-                "open whatsapp"
+            normalizedGoal.startsWith(
+                "open "
             )
-        ) {
+        )
+        {
 
-            val packageName =
+            val appName =
+                normalizedGoal
+                    .removePrefix(
+                        "open "
+                    )
+                    .trim()
+
+            val currentPackage =
                 screen.packageName
                     ?.lowercase()
                     ?: ""
 
-            val completed =
-                packageName.contains(
-                    "whatsapp"
-                )
+            return when(appName) {
 
-            Log.d(
-                TAG,
-                "WhatsApp open status: $completed"
-            )
+                "whatsapp" ->
+                    currentPackage.contains(
+                        "whatsapp"
+                    )
 
-            return completed
+                "chrome" ->
+                    currentPackage.contains(
+                        "chrome"
+                    )
+
+                "camera" ->
+                    currentPackage.contains(
+                        "camera"
+                    )
+
+                "settings" ->
+                    currentPackage.contains(
+                        "settings"
+                    )
+
+                else ->
+                    false
+            }
         }
 
         /*

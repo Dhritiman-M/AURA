@@ -42,7 +42,7 @@ class AgentController (
         )
 
         while(
-            state.stepCount < 10
+            state.stepCount < 5
         ) {
             /*
             * Some goals do not require
@@ -81,23 +81,16 @@ class AgentController (
 
                             break
                         }
-
-
-                        Thread.sleep(1500)
-
                     }
-
 
                     else -> {}
                 }
-
 
                 state =
                     state.copy(
                         stepCount =
                             state.stepCount + 1
                     )
-
 
                 continue
             }
@@ -234,10 +227,6 @@ class AgentController (
             /*
              * Allow UI to update
              */
-
-            Thread.sleep(
-                800
-            )
         }
     }
 
