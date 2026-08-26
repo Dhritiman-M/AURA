@@ -5,8 +5,12 @@ import com.dhritiman.aura.accessibility.AuraAccessibilityService
 import com.dhritiman.aura.accessibility.UIActionResult
 
 
-class AgentExecutor {
+class AgentExecutor(
 
+    private val taskExecutor: TaskExecutor,
+    private val selectedApps: Set<String>
+
+) {
 
     companion object {
 
@@ -14,23 +18,44 @@ class AgentExecutor {
             "AURA_AGENT_EXECUTOR"
     }
 
-
-
     fun execute(
         decision: ActionDecision
     ): Boolean {
 
 
-        when(decision) {
+        return when(decision) {
 
+            is ActionDecision.OpenApp -> {
 
-            is ActionDecision.Perform -> {
+                Log.d(
+                    TAG,
+                    "Opening app: ${decision.appName}"
+                )
+
+                taskExecutor.execute(
+
+                    Task(
+
+                        command =
+                            "Open ${decision.appName}",
+
+                        type =
+                            TaskType.OPEN_APP,
+
+                        appName =
+                            decision.appName
+                    ),
+
+                    selectedApps
+                )
+            }
+
+            is ActionDecision.PerformUI -> {
 
 
                 Log.d(
                     TAG,
-                    "Performing action: " +
-                            decision.action
+                    "Executing UI action: ${decision.action}"
                 )
 
 
@@ -38,27 +63,33 @@ class AgentExecutor {
                     AuraAccessibilityService.instance
 
 
+
                 if(service == null) {
+
 
                     Log.e(
                         TAG,
-                        "Accessibility service unavailable"
+                        "Accessibility unavailable"
                     )
 
-                    return false
+
+                    false
+
                 }
 
+                else {
 
 
-                val result =
-                    service.executeAction(
-                        decision.action
-                    )
+                    val result =
+                        service.executeAction(
+                            decision.action
+                        )
 
 
+                    result ==
+                            UIActionResult.Success
 
-                return result ==
-                        UIActionResult.Success
+                }
             }
 
 
@@ -68,11 +99,10 @@ class AgentExecutor {
 
                 Log.d(
                     TAG,
-                    "Goal completed: " +
-                            decision.message
+                    decision.message
                 )
 
-                return true
+                true
             }
 
 
@@ -82,11 +112,10 @@ class AgentExecutor {
 
                 Log.e(
                     TAG,
-                    "Decision failed: " +
-                            decision.reason
+                    decision.reason
                 )
 
-                return false
+                false
             }
         }
     }

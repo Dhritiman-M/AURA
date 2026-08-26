@@ -4,7 +4,10 @@ import android.util.Log
 import com.dhritiman.aura.accessibility.UIAction
 
 
-class AgentController {
+class AgentController (
+    private val taskExecutor: TaskExecutor,
+    private val selectedApps: Set<String>
+){
 
     companion object {
 
@@ -13,10 +16,16 @@ class AgentController {
     }
 
     private val executor =
-        AgentExecutor()
+    AgentExecutor(
+        taskExecutor,
+        selectedApps
+    )
     
     private val history =
     ActionHistory()
+
+    private val goalEvaluator =
+    GoalEvaluator()
 
     fun start(
         goal: String
@@ -35,7 +44,63 @@ class AgentController {
         while(
             state.stepCount < 10
         ) {
+            /*
+            * Some goals do not require
+            * screen observation initially.
+            *
+            * Example:
+            * open whatsapp
+            */
 
+            if(
+                state.stepCount == 0 &&
+                state.goal.lowercase()
+                    .startsWith("open ")
+            ) {
+
+                val decision =
+                    decide(state)
+
+                when(decision) {
+
+                    is ActionDecision.OpenApp -> {
+
+
+                        val success =
+                            executor.execute(
+                                decision
+                            )
+
+
+                        if(!success) {
+
+                            Log.e(
+                                TAG,
+                                "Could not open app"
+                            )
+
+                            break
+                        }
+
+
+                        Thread.sleep(1500)
+
+                    }
+
+
+                    else -> {}
+                }
+
+
+                state =
+                    state.copy(
+                        stepCount =
+                            state.stepCount + 1
+                    )
+
+
+                continue
+            }
             val screen =
                 com.dhritiman.aura.accessibility
                     .AuraAccessibilityService
@@ -51,6 +116,22 @@ class AgentController {
                         state.stepCount + 1
                 )
 
+            val completed =
+                goalEvaluator.evaluate(
+                    state.goal,
+                    screen
+                )
+
+            if(completed) {
+
+                Log.d(
+                    TAG,
+                    "Goal completed successfully"
+                )
+
+                break
+            }
+
             Log.d(
                 TAG,
                 "Observation step ${state.stepCount}"
@@ -63,7 +144,25 @@ class AgentController {
 
             when(decision) {
 
-                is ActionDecision.Perform -> {
+                is ActionDecision.OpenApp -> {
+
+                    val success =
+                    executor.execute(
+                        decision
+                    )
+
+                    if(!success){
+
+                    Log.e(
+                        TAG,
+                        "Could not open app"
+                    )
+
+                    break
+                    }
+                }
+
+                is ActionDecision.PerformUI -> {
 
                     Log.d(
                         TAG,
@@ -109,7 +208,6 @@ class AgentController {
                         break
                     }
 
-
                 }
 
                 is ActionDecision.Completed -> {
@@ -147,14 +245,33 @@ class AgentController {
         state: AgentState
     ): ActionDecision {
 
+        val goal =
+            state.goal.lowercase()
+        if(
+                goal.startsWith("open ")
+            ) {
+    
+                val appName =
+                    goal.removePrefix(
+                        "open "
+                    )
+                    .trim()
+    
+    
+                return ActionDecision.OpenApp(
+    
+                    appName =
+                        appName,
+    
+                    reason =
+                        "Application launch required"
+                )
+            }
         val screen =
             state.currentScreen
                 ?: return ActionDecision.Failed(
                     "No screen available"
                 )
-
-        val goal =
-            state.goal.lowercase()
 
         if(
             goal.contains(
@@ -186,7 +303,7 @@ class AgentController {
 
             if(searchExists) {
 
-                return ActionDecision.Perform(
+                return ActionDecision.PerformUI(
 
                     action =
                         UIAction.ClickText(

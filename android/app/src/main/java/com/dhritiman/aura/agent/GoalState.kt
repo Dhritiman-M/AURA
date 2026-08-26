@@ -7,9 +7,10 @@ enum class GoalStatus {
 
     COMPLETED,
 
-    FAILED
-}
+    FAILED,
 
+    WAITING
+}
 
 data class GoalState(
 

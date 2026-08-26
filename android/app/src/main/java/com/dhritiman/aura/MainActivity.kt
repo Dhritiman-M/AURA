@@ -65,8 +65,6 @@ class MainActivity : ComponentActivity() {
         val appPreferences =
             AppPreferences(this)
 
-        
-
         setContent {
 
             MaterialTheme {
@@ -147,7 +145,10 @@ class MainActivity : ComponentActivity() {
                                     )
                                 ){
 
-                                    AgentController()
+                                    AgentController(
+                                        taskExecutor,
+                                        selectedApps
+                                        )
                                         .start(
                                             command
                                                 .removePrefix("agent")
