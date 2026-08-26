@@ -1,6 +1,7 @@
 package com.dhritiman.aura.agent
 
 import android.util.Log
+import com.dhritiman.aura.accessibility.UIAction
 import com.dhritiman.aura.accessibility.UIActionResult
 
 class TaskPlanExecutor(
@@ -12,22 +13,10 @@ class TaskPlanExecutor(
         private const val TAG =
             "AURA_PLAN"
 
-        /*
-         * Temporary delay between actions.
-         *
-         * We will replace this later with
-         * intelligent UI-state waiting.
-         */
-        private const val ACTION_DELAY_MS = 500L
+        private const val MAX_RETRIES =
+            3
     }
 
-    /**
-     * Executes every step in a TaskPlan sequentially.
-     *
-     * selectedApps is passed all the way down to
-     * TaskExecutor so that the user's app-selection
-     * security restriction is always respected.
-     */
     fun execute(
         plan: TaskPlan,
         selectedApps: Set<String>
@@ -35,39 +24,14 @@ class TaskPlanExecutor(
 
         Log.d(
             TAG,
-            "================================"
+            "Starting task plan: " +
+                    "${plan.steps.size} steps"
         )
 
-        Log.d(
-            TAG,
-            "Starting TaskPlan"
-        )
-
-        Log.d(
-            TAG,
-            "Total steps: ${plan.steps.size}"
-        )
-
-        Log.d(
-            TAG,
-            "Selected apps: ${selectedApps.size}"
-        )
-
-        Log.d(
-            TAG,
-            "================================"
-        )
-
-        /*
-         * Execute each step in order.
-         */
         for (
             (index, step)
             in plan.steps.withIndex()
         ) {
-
-            val stepNumber =
-                index + 1
 
             Log.d(
                 TAG,
@@ -76,180 +40,129 @@ class TaskPlanExecutor(
 
             Log.d(
                 TAG,
-                "Executing step " +
-                        "$stepNumber/" +
-                        "${plan.steps.size}"
+                "Executing step ${index + 1}: $step"
             )
 
-            Log.d(
-                TAG,
-                "Step: $step"
-            )
-
-            /*
-             * Execute the appropriate type
-             * of plan step.
-             */
             val success =
-                when (step) {
+                executeStepWithRetry(
+                    step,
+                    selectedApps
+                )
 
-                    /*
-                     * =========================
-                     * OPEN APPLICATION
-                     * =========================
-                     */
-                    is PlanStep.OpenApp -> {
-
-                        executeOpenAppStep(
-                            step,
-                            selectedApps
-                        )
-                    }
-
-                    /*
-                     * =========================
-                     * UI ACTION
-                     * =========================
-                     */
-                    is PlanStep.UI -> {
-
-                        executeUIActionStep(
-                            step
-                        )
-                    }
-                }
-
-            /*
-             * Stop the entire plan immediately
-             * if a step fails.
-             */
             if (!success) {
 
                 Log.e(
                     TAG,
-                    "================================"
-                )
-
-                Log.e(
-                    TAG,
-                    "TASK PLAN FAILED"
-                )
-
-                Log.e(
-                    TAG,
-                    "Failed step: $stepNumber"
-                )
-
-                Log.e(
-                    TAG,
-                    "================================"
+                    "Step ${index + 1} failed"
                 )
 
                 return false
             }
 
-            Log.d(
-                TAG,
-                "Step $stepNumber completed successfully"
-            )
-
             /*
-             * Temporary delay to allow the Android
-             * UI to update before the next action.
+             * Give the Android UI a small amount
+             * of time to settle before inspecting
+             * the next state.
              */
-            if (
-                stepNumber <
-                plan.steps.size
-            ) {
-
-                Thread.sleep(
-                    ACTION_DELAY_MS
-                )
-            }
+            waitForUiToSettle()
         }
 
         Log.d(
             TAG,
-            "================================"
-        )
-
-        Log.d(
-            TAG,
-            "TASK PLAN COMPLETED SUCCESSFULLY"
-        )
-
-        Log.d(
-            TAG,
-            "================================"
+            "Task plan completed successfully"
         )
 
         return true
     }
 
-    /**
-     * Executes an application-opening step.
-     */
-    private fun executeOpenAppStep(
-        step: PlanStep.OpenApp,
+    private fun executeStepWithRetry(
+        step: PlanStep,
         selectedApps: Set<String>
     ): Boolean {
 
-        Log.d(
-            TAG,
-            "Opening application: " +
-                    step.appName
-        )
+        for (
+            attempt in 1..MAX_RETRIES
+        ) {
 
-        val task =
-            Task(
-                command =
-                    "Open ${step.appName}",
-
-                type =
-                    TaskType.OPEN_APP,
-
-                appName =
-                    step.appName
+            Log.d(
+                TAG,
+                "Attempt $attempt/$MAX_RETRIES"
             )
 
-        /*
-         * IMPORTANT:
-         *
-         * selectedApps is passed to TaskExecutor.
-         *
-         * This means an AI-generated plan cannot
-         * bypass the user's app-selection system.
-         */
-        return taskExecutor.execute(
-            task,
-            selectedApps
-        )
+            val result =
+                executeStep(
+                    step,
+                    selectedApps
+                )
+
+            if (result) {
+
+                Log.d(
+                    TAG,
+                    "Step succeeded on attempt $attempt"
+                )
+
+                return true
+            }
+
+            if (
+                attempt < MAX_RETRIES
+            ) {
+
+                Log.d(
+                    TAG,
+                    "Step failed. Retrying..."
+                )
+
+                waitForUiToSettle()
+            }
+        }
+
+        return false
     }
 
-    /**
-     * Executes an Accessibility/UI action.
-     */
-    private fun executeUIActionStep(
-        step: PlanStep.UI
+    private fun executeStep(
+        step: PlanStep,
+        selectedApps: Set<String>
     ): Boolean {
 
-        Log.d(
-            TAG,
-            "Executing UI action: " +
-                    step.action
-        )
+        return when (step) {
 
-        val result =
-            taskExecutor.executeUIAction(
-                step.action
-            )
+            is PlanStep.OpenApp -> {
 
-        Log.d(
-            TAG,
-            "UI action result: $result"
-        )
+                taskExecutor.execute(
 
-        return result ==
-                UIActionResult.Success
+                    Task(
+                        command =
+                            "Open ${step.appName}",
+
+                        type =
+                            TaskType.OPEN_APP,
+
+                        appName =
+                            step.appName
+                    ),
+
+                    selectedApps
+                )
+            }
+
+            is PlanStep.UI -> {
+
+                val result =
+                    taskExecutor
+                        .executeUIAction(
+                            step.action
+                        )
+
+                result ==
+                        UIActionResult.Success
+            }
+        }
+    }
+
+    private fun waitForUiToSettle() {
+
+        Thread.sleep(300)
     }
 }
