@@ -56,43 +56,42 @@ class UIActionExecutor(
             }
 
             is UIAction.ClickText -> {
+                    val root =
+                        controller.getRoot()
+                            ?: return UIActionResult.NotFound
 
-                val root =
-                    controller.getRoot()
-                        ?: return UIActionResult.NotFound
+                    val match =
+                        resolver.findBestTextMatch(
+                            root,
+                            action.text
+                        )
 
-                val node =
-                    resolver.find(
-                        root,
-                        action.text
-                    )
+                    if (match == null) {
 
-                if (node == null) {
+                        Log.d(
+                            TAG,
+                            "Could not resolve: " +
+                                    action.text
+                        )
+
+                        return UIActionResult.NotFound
+                    }
 
                     Log.d(
                         TAG,
-                        "UI element not found: " +
-                                action.text
+                        "Resolved '${action.text}' " +
+                                "using ${match.matchType} " +
+                                "score=${match.score}"
                     )
 
-                    root.recycle()
+                    val result =
+                        controller.click(
+                            match.node
+                        )
 
-                    return UIActionResult.NotFound
-                }
+                    match.node.recycle()
 
-                Log.d(
-                    TAG,
-                    "UI element resolved: " +
-                            action.text
-                )
-
-                val result =
-                    controller.click(node)
-
-                node.recycle()
-                root.recycle()
-
-                result
+                    result
             }
 
             is UIAction.ClickDescription -> {
